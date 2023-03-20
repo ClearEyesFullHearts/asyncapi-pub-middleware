@@ -8,26 +8,31 @@
  * Module dependencies.
  * @private
  */
-const { parse, AsyncAPIDocument } = require('@asyncapi/parser');
+const { parse } = require('@asyncapi/parser');
 const { Channel } = require('./channel');
-const { Connection } = require('./connection');
 
 class Publisher {
-  constructor() {
+  constructor(plugins = {}) {
     this.connections = {};
     this.channels = [];
+    this.plugins = {
+      amqp: './plugins/amqp',
+      kafka: './plugins/kafka',
+      ...plugins,
+    };
 
     this.getChannelAndParams = (topic) => {
       const l = this.channels.length;
       for (let i = 0; i < l; i += 1) {
         const channel = this.channels[i];
+
         const match = channel.regexp.exec(topic);
         if (match) {
           const params = {};
-          for (let j = 1; i < match.length; j += 1) {
-            const key = channel.keys[i - 1];
+          for (let j = 1; j < match.length; j += 1) {
+            const key = channel.keys[j - 1];
             const prop = key.name;
-            const val = this.decode_param(match[i]);
+            const val = this.decode_param(match[j]);
 
             if (val !== undefined || !(hasOwnProperty.call(params, prop))) {
               params[prop] = val;
@@ -46,36 +51,73 @@ class Publisher {
 
       return decodeURIComponent(val);
     };
+    this.getParamsSchema = (channel) => Object.keys(channel.parameters()).reduce((prevP, pName) => {
+      const { properties, required } = prevP;
+      const { type } = channel.parameter(pName).schema().json();
+      return {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          ...properties,
+          [pName]: { type },
+        },
+        required: [...required, pName],
+      };
+    }, {
+      type: 'object',
+      additionalProperties: false,
+      properties: {},
+      required: [],
+    });
   }
 
-  async loadAPI(apiDocument, connections) {
+  async loadAPI(apiDocument, connections = {}) {
     const api = await parse(apiDocument);
     const apiChannelNames = api.channelNames();
-    this.channels = apiChannelNames.reduce(async (prev, channelName) => {
+    const channels = await apiChannelNames.reduce(async (prev, channelName) => {
       const chan = api.channel(channelName);
       if (chan.hasSubscribe()) {
-        const ope = chan.subscribe();
         let serverNames = chan.servers();
         if (serverNames.length < 1) serverNames = api.serverNames();
-        const servers = await serverNames.map(async (sn) => {
-          if (this.connections[sn]) return this.connections[sn];
+
+        const servers = serverNames.map(async (sn) => {
+          const protocol = api.server(sn).protocol();
+          const plugin = this.plugins[protocol];
+          if (!plugin) throw new Error(`No plugin available for protocol ${protocol}`);
+
+          const bindings = chan.binding(protocol) || {};
+
+          const PluginClass = require(plugin); // eslint-disable-line
+
+          let conn;
           if (connections[sn]) {
             this.connections[sn] = connections[sn];
-            return this.connections[sn];
+            conn = this.connections[sn];
+          } else if (this.connections[sn]) {
+            conn = this.connections[sn];
+          } else {
+            conn = await PluginClass.getConnection(api.server(sn).json());
           }
-          const conn = new Connection(api.server(sn));
-          await conn.connect();
-          this.connections[sn] = conn;
-          return conn;
+
+          const publisher = new PluginClass(conn);
+          await publisher.bind(bindings);
+
+          const operationInfo = chan.subscribe().binding(protocol);
+          const messageInfo = chan.subscribe().message().binding(protocol);
+
+          return { publisher, infos: { ...operationInfo, ...messageInfo } };
         });
 
-        const c = new Channel(channelName, ope, servers);
-        await c.run();
-        prev.push(c);
-      }
+        const publishers = await Promise.all(servers);
 
+        const paramsSchema = this.getParamsSchema(chan);
+        const payloadSchema = chan.subscribe().message().originalPayload();
+        prev.push(new Channel(channelName, publishers, paramsSchema, payloadSchema));
+      }
       return prev;
     }, []);
+
+    this.channels = await Promise.all(channels);
   }
 
   async publish(topic, msg, options) {
@@ -85,7 +127,7 @@ class Publisher {
     channel.validateParams(params);
     channel.validateMessage(msg);
 
-    await channel.publish(msg, options);
+    await channel.publish(topic, msg, options);
   }
 }
 
