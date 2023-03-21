@@ -69,10 +69,39 @@ class Publisher {
       properties: {},
       required: [],
     });
+    this.getNamedConnections = async (api, connections) => {
+      const serverNames = api.serverNames();
+      const l = serverNames.length;
+      let conns = [];
+      for (let i = 0; i < l; i += 1) {
+        const sn = serverNames[i];
+        const protocol = api.server(sn).protocol();
+        const plugin = this.plugins[protocol];
+        if (!plugin) throw new Error(`No plugin available for protocol ${protocol}`);
+
+        if (connections[sn]) {
+          conns.push(Promise.resolve(connections[sn]));
+        } else {
+          const PluginClass = require(plugin); // eslint-disable-line
+          conns.push(PluginClass.getConnection(api.server(sn).json()));
+        }
+      }
+      conns = await Promise.all(conns);
+      const namedConnections = {};
+      for (let j = 0; j < l; j += 1) {
+        const sn = serverNames[j];
+        namedConnections[sn] = conns[j];
+      }
+
+      return namedConnections;
+    };
   }
 
   async loadAPI(apiDocument, connections = {}) {
     const api = await parse(apiDocument);
+
+    this.connections = await this.getNamedConnections(api, connections);
+
     const apiChannelNames = api.channelNames();
     const channels = await apiChannelNames.reduce(async (prev, channelName) => {
       const chan = api.channel(channelName);
@@ -85,34 +114,29 @@ class Publisher {
           const plugin = this.plugins[protocol];
           if (!plugin) throw new Error(`No plugin available for protocol ${protocol}`);
 
-          const bindings = chan.binding(protocol) || {};
+          const channelBindings = chan.binding(protocol) || {};
 
           const PluginClass = require(plugin); // eslint-disable-line
 
-          let conn;
-          if (connections[sn]) {
-            this.connections[sn] = connections[sn];
-            conn = this.connections[sn];
-          } else if (this.connections[sn]) {
-            conn = this.connections[sn];
-          } else {
-            conn = await PluginClass.getConnection(api.server(sn).json());
-          }
+          const operationBindings = chan.subscribe().binding(protocol);
 
-          const publisher = new PluginClass(conn);
-          await publisher.bind(bindings);
+          const publisher = new PluginClass(this.connections[sn]);
+          await publisher.bind(channelBindings, operationBindings);
 
-          const operationInfo = chan.subscribe().binding(protocol);
-          const messageInfo = chan.subscribe().message().binding(protocol);
+          const messageBindings = chan.subscribe().message().binding(protocol);
 
-          return { publisher, infos: { ...operationInfo, ...messageInfo } };
+          return { publisher, messageBindings };
         });
 
         const publishers = await Promise.all(servers);
 
         const paramsSchema = this.getParamsSchema(chan);
+        let headersSchema = {};
+        if (chan.subscribe().message().headers()) {
+          headersSchema = chan.subscribe().message().headers().json();
+        }
         const payloadSchema = chan.subscribe().message().originalPayload();
-        prev.push(new Channel(channelName, publishers, paramsSchema, payloadSchema));
+        prev.push(new Channel(channelName, publishers, paramsSchema, headersSchema, payloadSchema));
       }
       return prev;
     }, []);
@@ -120,14 +144,15 @@ class Publisher {
     this.channels = await Promise.all(channels);
   }
 
-  async publish(topic, msg, options) {
+  async publish(topic, msg, headers = {}, options = {}) {
     const { channel, params } = this.getChannelAndParams(topic);
     if (!channel) throw new Error(`No channel found for topic ${topic}`);
 
     channel.validateParams(params);
+    channel.validateHeaders(headers);
     channel.validateMessage(msg);
 
-    await channel.publish(topic, msg, options);
+    await channel.publish(topic, headers, msg, options);
   }
 }
 

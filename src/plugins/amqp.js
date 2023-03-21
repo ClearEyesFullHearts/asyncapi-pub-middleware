@@ -16,6 +16,7 @@ class AmqpConnection {
     this.isQ = false;
     this.exchangeName = '';
     this.queueName = '';
+    this.operationBindings = {};
 
     this.getPublishOptions = (infos) => {
       const publishOptions = {};
@@ -48,7 +49,9 @@ class AmqpConnection {
     };
   }
 
-  async bind(channelInfo) {
+  async bind(channelInfo, operationInfo) {
+    this.operationBindings = operationInfo;
+
     const {
       is,
       exchange,
@@ -85,7 +88,7 @@ class AmqpConnection {
     }
   }
 
-  async publish(topic, msg, infos) {
+  async publish(topic, headers, msg, infos, options = {}) {
     let strContent = msg;
     if (Object.prototype.toString.call(msg) !== '[object String]') {
       try {
@@ -96,12 +99,23 @@ class AmqpConnection {
     }
     const bufContent = Buffer.from(strContent);
 
-    const publishOptions = this.getPublishOptions(infos);
+    const publishOptions = this.getPublishOptions({
+      ...this.operationBindings,
+      ...infos,
+    });
+
+    const fullOptions = {
+      ...publishOptions, ...options, headers: { ...headers },
+    };
 
     if (this.isQ) {
       return new Promise((resolve, reject) => {
         try {
-          const result = this.boundChannel.sendToQueue(this.queueName, bufContent, publishOptions);
+          const result = this.boundChannel.sendToQueue(
+            this.queueName,
+            bufContent,
+            fullOptions,
+          );
           resolve(result);
         } catch (err) {
           reject(err);
@@ -114,7 +128,7 @@ class AmqpConnection {
           this.exchangeName,
           topic,
           bufContent,
-          publishOptions,
+          fullOptions,
         );
         resolve(result);
       } catch (err) {

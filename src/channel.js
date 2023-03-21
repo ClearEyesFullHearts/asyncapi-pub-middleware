@@ -4,7 +4,7 @@ const pathRegexp = require('path-to-regexp');
 const ValidationError = require('./validationError');
 
 class Channel {
-  constructor(topic, publishers, paramsSchema, bodySchema, options) {
+  constructor(topic, publishers, paramsSchema, headerSchema, bodySchema, options) {
     this.topic = topic.replace(/{/g, ':').replace(/}/g, '');
     this.keys = [];
     this.regexp = pathRegexp(this.topic, this.keys, options);
@@ -15,6 +15,7 @@ class Channel {
 
     const ajvB = new Ajv();
     addFormats(ajvB);
+    this.headerValidator = ajvB.compile(headerSchema);
     this.bodyValidator = ajvB.compile(bodySchema);
   }
 
@@ -25,6 +26,18 @@ class Channel {
       throw new ValidationError(
         ValidationError.PARAMS_VALIDATION_FAILURE,
         `Parameter validation error on ${err.schemaPath}: ${err.message}`,
+        err,
+      );
+    }
+  }
+
+  validateHeaders(headers) {
+    const valid = this.headerValidator(headers);
+    if (!valid) {
+      const [err] = this.bodyValidator.errors;
+      throw new ValidationError(
+        ValidationError.HEADER_VALIDATION_FAILURE,
+        `Header validation error on ${err.schemaPath}: ${err.message}`,
         err,
       );
     }
@@ -42,12 +55,12 @@ class Channel {
     }
   }
 
-  async publish(topic, message, options) {
+  async publish(topic, header, message, options) {
     const l = this.publishers.length;
     const results = [];
     for (let i = 0; i < l; i += 1) {
-      const { infos, publisher } = this.publishers[i];
-      results.push(publisher.publish(topic, message, infos, options));
+      const { messageBindings, publisher } = this.publishers[i];
+      results.push(publisher.publish(topic, header, message, messageBindings, options));
     }
 
     await Promise.all(results);

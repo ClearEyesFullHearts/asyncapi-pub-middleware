@@ -1,0 +1,79 @@
+asyncapi: 2.6.0
+
+id: urn:com:example:print:api
+
+info:
+  title: Print Service API
+  version: 1.0.0
+  description: |-
+    Allows you to interact with printers. Using it you can:
+    * Create a print job
+    * Receive events on the print job
+  termsOfService: http://www.example.com/terms
+  contact:
+    name: API Support
+    url: https://www.example.com/support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+tags:
+  - name: asyncapi
+    description: The industry standard for defining asynchronous APIs.
+    externalDocs:
+      description: AsyncAPI specification 2.0.0
+      url: https://www.asyncapi.com/docs/specifications/2.0.0
+
+servers:
+
+  broker0:
+    url: dale-broker-0:9092
+    protocol: kafka
+    protocolVersion: '1.0.0'
+    tags:
+        - name: production
+  broker1:
+    url: dale-broker-1:9092
+    protocol: kafka
+    protocolVersion: '1.0.0'
+    tags:
+        - name: production
+  broker2:
+    url: dale-broker-2:9092
+    protocol: kafka
+    protocolVersion: '1.0.0'
+    tags:
+        - name: production
+
+defaultContentType: application/json
+
+channels:
+  my.topic.name:
+    description: This is my Kafka topic
+    servers: ['broker0']
+    subscribe:
+      operationId: someUniqueId
+      summary: Interesting messages
+      description: You can get really interesting messages from this topic
+      tags:
+        - name: awesome
+        - name: interesting
+      message:
+        description: Description of a single message
+        payload:
+          type: object
+          required: 
+            - name
+          properties:
+            name: 
+              type: string
+            address:
+              type: string
+              format: email 
+        bindings:
+          kafka:
+            key:
+              type: string
+              description: explanation of how message keys are being used
+            bindingVersion: '0.1.0'
