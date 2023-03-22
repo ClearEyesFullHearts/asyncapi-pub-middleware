@@ -8,7 +8,7 @@
  * Module dependencies.
  * @private
  */
-const { parse } = require('@asyncapi/parser');
+const { parse, AsyncAPIDocument } = require('@asyncapi/parser');
 const { Channel } = require('./channel');
 
 class Publisher {
@@ -98,7 +98,10 @@ class Publisher {
   }
 
   async loadAPI(apiDocument, connections = {}) {
-    const api = await parse(apiDocument);
+    let api = apiDocument;
+    if (!(api instanceof AsyncAPIDocument)) {
+      api = await parse(apiDocument);
+    }
 
     this.connections = await this.getNamedConnections(api, connections);
 
