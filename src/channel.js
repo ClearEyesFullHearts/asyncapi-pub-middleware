@@ -1,6 +1,7 @@
 const Ajv = require('ajv');
 const addFormats = require('ajv-formats');
 const pathRegexp = require('path-to-regexp');
+const debug = require('debug')('asyncapi-pub-middleware:channel');
 const ValidationError = require('./validationError');
 
 class Channel {
@@ -17,6 +18,8 @@ class Channel {
     addFormats(ajvB);
     this.headerValidator = ajvB.compile(headerSchema);
     this.bodyValidator = ajvB.compile(bodySchema);
+
+    debug(`Channel created for topic ${this.topic} with ${this.publishers.length} connections`);
   }
 
   validateParams(params) {
@@ -64,6 +67,7 @@ class Channel {
     }
 
     await Promise.all(results);
+    debug(`Channel published ${results.length} messages`);
   }
 }
 

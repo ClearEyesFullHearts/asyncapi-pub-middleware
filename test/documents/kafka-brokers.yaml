@@ -49,7 +49,7 @@ servers:
 defaultContentType: application/json
 
 channels:
-  my.topic.name:
+  my.topic.of.choice:
     description: This is my Kafka topic
     servers: ['broker0']
     subscribe:

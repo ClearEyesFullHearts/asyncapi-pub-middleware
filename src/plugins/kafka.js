@@ -1,5 +1,6 @@
 const { Kafka } = require('kafkajs');
 const Ajv = require('ajv');
+const debug = require('debug')('asyncapi-pub-middleware:plugins:kafka');
 const ValidationError = require('../validationError');
 
 class KafkaConnection {
@@ -43,6 +44,7 @@ class KafkaConnection {
 
   async bind(channelInfo, operationInfo) {
     if (!this.isConnected) {
+      debug('Creating connection');
       let clientId;
       if (operationInfo
         && operationInfo.clientId
@@ -55,14 +57,18 @@ class KafkaConnection {
       if (!clientId || clientId.length !== 1) {
         if (KafkaConnection.tags[this.tag].producer) {
           this.client = KafkaConnection.tags[this.tag].producer;
+          debug(`Re-using existing connection for server '${this.tag}'`);
         } else {
           const kafka = new Kafka({ brokers: KafkaConnection.tags[this.tag].brokerList });
           this.client = kafka.producer();
+          debug(`Connecting to cluster '${this.tag}'...`);
           await this.client.connect();
+          debug('Connected');
           KafkaConnection.tags[this.tag].producer = this.client;
         }
       } else if (KafkaConnection.tags[this.tag].kafkas[clientId]) {
         this.client = KafkaConnection.tags[this.tag].kafkas[clientId];
+        debug(`Re-using existing connection for cluster '${this.tag}' and clientId ${clientId}`);
       } else {
         const kafka = new Kafka({
           clientId,
@@ -70,7 +76,9 @@ class KafkaConnection {
         });
 
         this.client = kafka.producer();
+        debug(`Connecting to cluster '${this.tag}' with clientId ${clientId}...`);
         await this.client.connect();
+        debug('Connected');
         KafkaConnection.tags[this.tag].kafkas[clientId] = this.client;
       }
     }
@@ -78,6 +86,7 @@ class KafkaConnection {
     const { topic, partitions } = channelInfo;
     this.topic = topic;
     this.partitionsNb = partitions;
+    debug('Connection ready');
   }
 
   async publish(topic, headers, msg, infos, options) {
@@ -116,6 +125,7 @@ class KafkaConnection {
 
     const sendTopic = this.topic || topic;
 
+    debug(`Publishing on topic '${sendTopic}'`);
     await this.client.send({
       topic: sendTopic,
       messages: [{

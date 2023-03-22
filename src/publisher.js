@@ -9,6 +9,7 @@
  * @private
  */
 const { parse, AsyncAPIDocument } = require('@asyncapi/parser');
+const debug = require('debug')('asyncapi-pub-middleware:publisher');
 const { Channel } = require('./channel');
 
 class Publisher {
@@ -20,6 +21,8 @@ class Publisher {
       kafka: './plugins/kafka',
       ...plugins,
     };
+
+    debug(`Publisher created with ${Object.keys(plugins).length > 0 ? Object.keys(plugins).join(', ') : 'no'} custom plugins`);
 
     this.getChannelAndParams = (topic) => {
       const l = this.channels.length;
@@ -71,11 +74,17 @@ class Publisher {
     });
     this.getNamedConnections = async (api, connections) => {
       const serverNames = api.serverNames();
+
+      debug(`Found named servers ${serverNames}`);
+
       const l = serverNames.length;
       let conns = [];
       for (let i = 0; i < l; i += 1) {
         const sn = serverNames[i];
         const protocol = api.server(sn).protocol();
+
+        debug(`Protocol for ${sn} is ${protocol}`);
+
         const plugin = this.plugins[protocol];
         if (!plugin) throw new Error(`No plugin available for protocol ${protocol}`);
 
@@ -105,8 +114,16 @@ class Publisher {
 
     this.connections = await this.getNamedConnections(api, connections);
 
+    debug(`Found ${Object.keys(this.connections).length} named connections`);
+
     const apiChannelNames = api.channelNames();
-    const channels = await apiChannelNames.reduce(async (prev, channelName) => {
+
+    debug(`Found ${apiChannelNames.length} channels`);
+
+    const channels = [];
+    const l = apiChannelNames.length;
+    for (let i = 0; i < l; i += 1) {
+      const channelName = apiChannelNames[i];
       const chan = api.channel(channelName);
       if (chan.hasSubscribe()) {
         let serverNames = chan.servers();
@@ -121,17 +138,17 @@ class Publisher {
 
           const PluginClass = require(plugin); // eslint-disable-line
 
-          const operationBindings = chan.subscribe().binding(protocol);
+          const operationBindings = chan.subscribe().binding(protocol) || {};
 
           const publisher = new PluginClass(this.connections[sn]);
           await publisher.bind(channelBindings, operationBindings);
 
-          const messageBindings = chan.subscribe().message().binding(protocol);
+          const messageBindings = chan.subscribe().message().binding(protocol) || {};
 
           return { publisher, messageBindings };
         });
 
-        const publishers = await Promise.all(servers);
+        const publishers = await Promise.all(servers); // eslint-disable-line
 
         const paramsSchema = this.getParamsSchema(chan);
         let headersSchema = {};
@@ -139,12 +156,13 @@ class Publisher {
           headersSchema = chan.subscribe().message().headers().json();
         }
         const payloadSchema = chan.subscribe().message().originalPayload();
-        prev.push(new Channel(channelName, publishers, paramsSchema, headersSchema, payloadSchema));
+        const c = new Channel(channelName, publishers, paramsSchema, headersSchema, payloadSchema);
+        channels.push(c);
+        debug(`Channel ${channelName} is ready`);
       }
-      return prev;
-    }, []);
+    }
 
-    this.channels = await Promise.all(channels);
+    this.channels = channels;
   }
 
   async publish(topic, msg, headers = {}, options = {}) {
@@ -154,6 +172,8 @@ class Publisher {
     channel.validateParams(params);
     channel.validateHeaders(headers);
     channel.validateMessage(msg);
+
+    debug(`Publish on topic ${topic}`);
 
     await channel.publish(topic, headers, msg, options);
   }

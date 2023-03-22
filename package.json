@@ -4,7 +4,7 @@
   "description": "Add a validating publisher object, from an AsyncAPI file description, to your request",
   "main": "index.js",
   "scripts": {
-    "test": "jest"
+    "test": "set DEBUG=asyncapi-pub-middleware:*&& jest"
   },
   "jest": {
     "collectCoverage": true
@@ -26,6 +26,7 @@
     "ajv": "^8.12.0",
     "ajv-formats": "^2.1.1",
     "amqplib": "^0.10.3",
+    "debug": "^4.3.4",
     "kafkajs": "^2.2.4",
     "path-to-regexp": "0.1.7"
   },

@@ -1,12 +1,16 @@
 const amqplib = require('amqplib');
+const debug = require('debug')('asyncapi-pub-middleware:plugins:amqp');
 
 class AmqpConnection {
   static async getConnection(connectionInfo) {
+    debug('Creating amqp connection');
     const { url, protocol, protocolVersion } = connectionInfo;
     if (protocol !== 'amqp') throw new Error('Protocol should be amqp');
     if (protocolVersion !== '0.9.1') throw new Error('Only the 0.9.1 protocol is supported');
 
+    debug(`Connecting to '${url}'...`);
     const conn = await amqplib.connect(url);
+    debug('Connected');
     return conn;
   }
 
@@ -52,6 +56,8 @@ class AmqpConnection {
   async bind(channelInfo, operationInfo) {
     this.operationBindings = operationInfo;
 
+    debug('Binding this connection');
+
     const {
       is,
       exchange,
@@ -60,6 +66,7 @@ class AmqpConnection {
     this.isQ = (is === 'queue');
 
     this.boundChannel = await this.connection.createChannel();
+    debug('AMQP channel is created');
 
     if (!this.isQ && exchange && exchange.name) {
       const { name: exName, type: exType, ...exOptions } = exchange;
@@ -71,6 +78,7 @@ class AmqpConnection {
         ...exOptions,
       };
       await this.boundChannel.assertExchange(exName, exType, options);
+      debug(`Exchange '${exName}' asserted`);
     }
 
     if (this.isQ && (!queue || !queue.name)) throw new Error('Channel type "queue" should have a queue name defined');
@@ -85,6 +93,7 @@ class AmqpConnection {
         ...qOptions,
       };
       await this.boundChannel.assertQueue(qName, options);
+      debug(`Queue '${qName}' asserted`);
     }
   }
 
@@ -109,6 +118,7 @@ class AmqpConnection {
     };
 
     if (this.isQ) {
+      debug(`Publishing on queue '${this.queueName}'`);
       return new Promise((resolve, reject) => {
         try {
           const result = this.boundChannel.sendToQueue(
@@ -122,6 +132,7 @@ class AmqpConnection {
         }
       });
     }
+    debug(`Publishing on exchange '${this.exchangeName}'`);
     return new Promise((resolve, reject) => {
       try {
         const result = this.boundChannel.publish(

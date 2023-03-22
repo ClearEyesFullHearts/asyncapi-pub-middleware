@@ -1,0 +1,112 @@
+asyncapi: 2.6.0
+info:
+  title: MFT Monitoring Service
+  version: 1.0.0
+  description: This service is in charge of managing the monitoring of the MFT services
+servers:
+  logger:
+    url: amqp:localhost
+    protocol: amqp
+    protocolVersion: 0.9.1
+  garbage:
+    url: brokerlist
+    protocol: kafka
+channels:
+  event.{app}.{severity}:
+    description: Channel for logs management
+    servers:
+      - logger
+    parameters:
+      app:
+        schema:
+          $ref: '#/components/schemas/app'
+      severity:
+        schema:
+          $ref: '#/components/schemas/severity'
+    subscribe:
+      description: A service logs all its events
+      operationId: logEvents
+      message:
+        $ref: '#/components/messages/Event'
+    bindings:
+      amqp:
+        is: routingKey
+        exchange:
+          name: logs
+          type: topic
+          durable: true
+          autoDelete: false
+  garbage.in:
+    description: Channel for keeping messages that are wrongly routed to a service
+    servers:
+      - garbage
+    subscribe:
+      description: A service sends all messages that it can't treat
+      operationId: outGarbage
+      message:
+        $ref: '#/components/messages/Trash'
+components:
+  schemas:
+    app:
+      type: string
+    severity:
+      type: string
+      enum:
+        - info
+        - warning
+        - failure
+        - error
+  messages:
+    Event:
+      payload:
+        type: object
+        required:
+          - sessionId
+          - eventId
+          - type
+          - duration
+          - result
+        properties:
+          sessionId:
+            type: string
+            description: unique identifier (UUID) of the session
+          eventId:
+            type: string
+            description: unique identifier (UUID) of the event
+          type:
+            type: string
+            description: the operationId that match this event
+          duration:
+            type: integer
+            description: duration of the event
+          result:
+            type: string
+            enum:
+              - OK
+              - KO
+            description: result of the event
+          input:
+            type: object
+            description: input that triggered the event
+          output:
+            type: object
+            description: event's output
+    Trash:
+      payload:
+        type: object
+        required:
+          - receiver
+          - routing
+        properties:
+          receiver:
+            type: string
+            description: The app that received the trash
+          originator:
+            type: string
+            description: Informations about the origin of the trash if known
+          routing:
+            type: string
+            description: The topic or path requested
+          body:
+            type: string
+            description: The stringified payload of the trash
