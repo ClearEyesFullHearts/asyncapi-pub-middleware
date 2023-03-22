@@ -1,6 +1,6 @@
 {
   "name": "asyncapi-pub-middleware",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Add a validating publisher object, from an AsyncAPI file description, to your request",
   "main": "index.js",
   "scripts": {
