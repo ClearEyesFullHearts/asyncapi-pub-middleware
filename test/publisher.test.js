@@ -16,7 +16,7 @@ describe('Publisher tests', () => {
 
     await pub.publish('events/3', { jobId: '3', status: 'started' });
   });
-  test.only('my test kafka', async () => {
+  test('my test kafka', async () => {
     const pub = new Publisher({ kafka: '../test/mock/kafka' });
     const text = fs.readFileSync(`${__dirname}/documents/kafka-brokers.yaml`, 'utf8');
 
@@ -29,7 +29,10 @@ describe('Publisher tests', () => {
     const pub = new Publisher();
     const text = fs.readFileSync(`${__dirname}/documents/logger.yaml`, 'utf8');
 
-    await pub.loadAPI(text, { logger: amqpMockConnection, garbage: kafkaMockConnection });
+    const opts = {
+      connections: { logger: amqpMockConnection, garbage: kafkaMockConnection },
+    };
+    await pub.loadAPI(text, opts);
 
     const event = {
       sessionId: 'uuid-session',

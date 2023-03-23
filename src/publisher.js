@@ -106,11 +106,16 @@ class Publisher {
     };
   }
 
-  async loadAPI(apiDocument, connections = {}) {
+  async loadAPI(apiDocument, options = {}) {
     let api = apiDocument;
     if (!(api instanceof AsyncAPIDocument)) {
       api = await parse(apiDocument);
     }
+
+    const {
+      tag = '',
+      connections = {},
+    } = options;
 
     this.connections = await this.getNamedConnections(api, connections);
 
@@ -125,7 +130,7 @@ class Publisher {
     for (let i = 0; i < l; i += 1) {
       const channelName = apiChannelNames[i];
       const chan = api.channel(channelName);
-      if (chan.hasSubscribe()) {
+      if (chan.hasSubscribe() && (!tag || chan.subscribe().hasTag(tag))) {
         let serverNames = chan.servers();
         if (serverNames.length < 1) serverNames = api.serverNames();
 
