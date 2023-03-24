@@ -53,4 +53,13 @@ describe('Publisher tests', () => {
     };
     await pub.publish('garbage.in', garbage, {}, { key: 'test', partition: 1 });
   });
+
+  test('my test no message', async () => {
+    const pub = new Publisher({ amqp: '../test/mock/amqp' });
+    const text = fs.readFileSync(`${__dirname}/documents/amqp-no-msg.yaml`, 'utf8');
+
+    await pub.loadAPI(text);
+
+    await pub.publish('events/3');
+  });
 });

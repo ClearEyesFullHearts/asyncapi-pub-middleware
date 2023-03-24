@@ -114,10 +114,10 @@ class KafkaConnection {
       }
     }
 
-    let strContent = msg;
-    if (Object.prototype.toString.call(msg) !== '[object String]') {
+    let strContent = msg || {};
+    if (Object.prototype.toString.call(strContent) !== '[object String]') {
       try {
-        strContent = JSON.stringify(msg);
+        strContent = JSON.stringify(strContent);
       } catch (err) {
         throw new Error('The message content could not be stringified');
       }

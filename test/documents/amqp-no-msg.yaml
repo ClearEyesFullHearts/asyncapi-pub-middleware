@@ -1,0 +1,93 @@
+asyncapi: 2.6.0
+
+id: urn:com:example:print:api
+
+info:
+  title: Print Service API
+  version: 1.0.0
+  description: |-
+    Allows you to interact with printers. Using it you can:
+    * Create a print job
+    * Receive events on the print job
+  termsOfService: http://www.example.com/terms
+  contact:
+    name: API Support
+    url: https://www.example.com/support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+tags:
+  - name: asyncapi
+    description: The industry standard for defining asynchronous APIs.
+    externalDocs:
+      description: AsyncAPI specification 2.0.0
+      url: https://www.asyncapi.com/docs/specifications/2.0.0
+
+servers:
+
+  rabbit:
+    url: amqp://myuser:mypassword@localhost:5672
+    protocol: amqp
+    protocolVersion: 0.9.1
+    description: amqp server.
+    tags:
+        - name: production
+
+defaultContentType: application/json
+
+channels:
+
+  events/{jobId}:
+    description: The queue on which print job events can be consumed.
+    subscribe:
+      operationId: printJobEvent
+      summary: Consumes print job events.
+      description: |-
+        Available events:
+        * Print job created
+        * Print job started
+        * Print job finished
+        * Print job canceled
+      tags:
+        - name: event
+          externalDocs:
+            description: Print job event.
+            url: https://www.example.com/docs/api/jobs/events
+        - name: queue
+          externalDocs:
+            description: Print queue.
+            url: https://www.example.com/docs/api/queues
+      externalDocs:
+        description: Print Job Events Documentation.
+        url: https://www.example.com/docs/api/jobs/events
+        
+      bindings:
+        amqp:
+          expiration: 60
+          userId: guest
+          cc: ["user.log", "support.log"]
+          priority: 10
+          deliveryMode: 2
+          mandatory: false
+          bcc: ["external.audit"]
+          replyTo: user.reply
+          timestamp: true
+          ack: true
+          bindingVersion: 0.1.0
+    parameters:
+      jobId:
+        description: The identifier of the print job.
+        schema:
+          type: string
+    bindings:
+      amqp:
+        is: queue
+        queue:
+          name: events/jobs
+          durable: true
+          exclusive: false
+          autoDelete: false
+          vhost: /
+        bindingVersion: 0.1.0

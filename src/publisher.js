@@ -134,6 +134,9 @@ class Publisher {
         let serverNames = chan.servers();
         if (serverNames.length < 1) serverNames = api.serverNames();
 
+        const operation = chan.subscribe();
+        const opeMsg = operation.message();
+
         const servers = serverNames.map(async (sn) => {
           const protocol = api.server(sn).protocol();
           const plugin = this.plugins[protocol];
@@ -143,12 +146,15 @@ class Publisher {
 
           const PluginClass = require(plugin); // eslint-disable-line
 
-          const operationBindings = chan.subscribe().binding(protocol) || {};
+          const operationBindings = operation.binding(protocol) || {};
 
           const publisher = new PluginClass(this.connections[sn]);
           await publisher.bind(channelBindings, operationBindings);
 
-          const messageBindings = chan.subscribe().message().binding(protocol) || {};
+          let messageBindings = {};
+          if (opeMsg && opeMsg.binding(protocol)) {
+            messageBindings = opeMsg.binding(protocol);
+          }
 
           return { publisher, messageBindings };
         });
@@ -157,10 +163,14 @@ class Publisher {
 
         const paramsSchema = this.getParamsSchema(chan);
         let headersSchema = {};
-        if (chan.subscribe().message().headers()) {
-          headersSchema = chan.subscribe().message().headers().json();
+        if (opeMsg && opeMsg.headers()) {
+          headersSchema = opeMsg.headers().json();
         }
-        const payloadSchema = chan.subscribe().message().originalPayload();
+
+        let payloadSchema = {};
+        if (opeMsg) {
+          payloadSchema = opeMsg.originalPayload();
+        }
         const c = new Channel(channelName, publishers, paramsSchema, headersSchema, payloadSchema);
         channels.push(c);
         debug(`Channel ${channelName} is ready`);
