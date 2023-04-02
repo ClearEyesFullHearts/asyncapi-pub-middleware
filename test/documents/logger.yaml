@@ -46,6 +46,15 @@ channels:
       message:
         $ref: '#/components/messages/Trash'
 components:
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        required:
+          - x-session-id
+        properties:
+          x-session-id:
+            type: string
   schemas:
     app:
       type: string
@@ -92,6 +101,8 @@ components:
             type: object
             description: event's output
     Trash:
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
       payload:
         type: object
         required:

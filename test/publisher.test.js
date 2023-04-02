@@ -51,7 +51,7 @@ describe('Publisher tests', () => {
       receiver: 'test',
       routing: 'garbage.out',
     };
-    await pub.publish('garbage.in', garbage, {}, { key: 'test', partition: 1 });
+    await pub.publish('garbage.in', garbage, { 'x-session-id': 'myuniqueid' }, { key: 'test', partition: 1 });
   });
 
   test('my test no message', async () => {

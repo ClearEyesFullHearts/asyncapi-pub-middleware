@@ -4,6 +4,21 @@ const pathRegexp = require('path-to-regexp');
 const debug = require('debug')('asyncapi-pub-middleware:channel');
 const ValidationError = require('./validationError');
 
+function cleanHeaders(headers) {
+  const {
+    'x-parser-schema-id': ignore,
+    ...restHeaders
+  } = headers;
+
+  Object.keys(restHeaders).forEach((k) => {
+    if (Object.prototype.toString.call(restHeaders[k]) === '[object Object]') {
+      restHeaders[k] = cleanHeaders(restHeaders[k]);
+    }
+  });
+
+  return restHeaders;
+}
+
 class Channel {
   constructor(topic, publishers, paramsSchema, headerSchema, bodySchema, options) {
     this.topic = topic.replace(/{/g, ':').replace(/}/g, '');
@@ -16,7 +31,7 @@ class Channel {
 
     const ajvB = new Ajv();
     addFormats(ajvB);
-    this.headerValidator = ajvB.compile(headerSchema);
+    this.headerValidator = ajvB.compile(cleanHeaders(headerSchema));
     this.bodyValidator = ajvB.compile(bodySchema);
 
     debug(`Channel created for topic ${this.topic} with ${this.publishers.length} connections`);
