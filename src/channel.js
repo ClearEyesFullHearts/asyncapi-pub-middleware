@@ -29,9 +29,10 @@ class Channel {
     const ajvP = new Ajv({ coerceTypes: true });
     this.paramsValidator = ajvP.compile(paramsSchema);
 
+    this.headerValidator = ajvP.compile(cleanHeaders(headerSchema));
+
     const ajvB = new Ajv();
     addFormats(ajvB);
-    this.headerValidator = ajvB.compile(cleanHeaders(headerSchema));
     this.bodyValidator = ajvB.compile(bodySchema);
 
     debug(`Channel created for topic ${this.topic} with ${this.publishers.length} connections`);
