@@ -1,7 +1,7 @@
 const { Publisher } = require('./publisher');
 
-async function getPublisherMiddleware(doc, connections = {}) {
-  const publisher = new Publisher();
+async function getPublisherMiddleware(doc, connections = {}, plugins = {}) {
+  const publisher = new Publisher(plugins);
   await publisher.loadAPI(doc, connections);
 
   return (req, res, next) => {
