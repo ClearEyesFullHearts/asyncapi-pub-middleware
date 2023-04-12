@@ -56,13 +56,17 @@ class Publisher {
     };
     this.getParamsSchema = (channel) => Object.keys(channel.parameters()).reduce((prevP, pName) => {
       const { properties, required } = prevP;
-      const { type } = channel.parameter(pName).schema().json();
+      const {
+        type, format, enum: enumValues, pattern,
+      } = channel.parameter(pName).schema().json();
       return {
         type: 'object',
         additionalProperties: false,
         properties: {
           ...properties,
-          [pName]: { type },
+          [pName]: {
+            type, format, enum: enumValues, pattern,
+          },
         },
         required: [...required, pName],
       };

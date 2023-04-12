@@ -27,6 +27,7 @@ class Channel {
     this.publishers = publishers;
 
     const ajvP = new Ajv({ coerceTypes: true });
+    addFormats(ajvP);
     this.paramsValidator = ajvP.compile(paramsSchema);
 
     const ajvB = new Ajv();
