@@ -147,6 +147,16 @@ class AmqpConnection {
       }
     });
   }
+
+  async stop(closeConnection = true) {
+    try {
+      await this.boundChannel.close();
+      if (closeConnection) await this.connection.close();
+      debug('gracefull exit');
+    } catch (err) {
+      debug('exit failed');
+    }
+  }
 }
 
 module.exports = AmqpConnection;

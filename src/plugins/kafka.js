@@ -133,6 +133,15 @@ class KafkaConnection {
       }],
     });
   }
+
+  async stop() {
+    try {
+      await this.client.disconnect();
+      debug('gracefull exit');
+    } catch (err) {
+      debug('exit failed');
+    }
+  }
 }
 
 module.exports = KafkaConnection;

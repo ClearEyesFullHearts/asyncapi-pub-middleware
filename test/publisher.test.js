@@ -15,6 +15,7 @@ describe('Publisher tests', () => {
     await pub.loadAPI(text);
 
     await pub.publish('events/3', { jobId: '3', status: 'started' });
+    await pub.stop();
   });
   test('my test kafka', async () => {
     const pub = new Publisher({ kafka: '../test/mock/kafka' });
@@ -24,6 +25,7 @@ describe('Publisher tests', () => {
 
     const msg = { name: 'john smith', address: 'john.smith@example.com' };
     await pub.publish('my.topic.of.choice', msg, {}, { key: 'test', partition: 1 });
+    await pub.stop(false);
   });
   test('my test', async () => {
     const pub = new Publisher();
@@ -52,6 +54,7 @@ describe('Publisher tests', () => {
       routing: 'garbage.out',
     };
     await pub.publish('garbage.in', garbage, { 'x-session-id': 'myuniqueid' }, { key: 'test', partition: 1 });
+    await pub.stop(true);
   });
 
   test('my test no message', async () => {
@@ -61,5 +64,6 @@ describe('Publisher tests', () => {
     await pub.loadAPI(text);
 
     await pub.publish('events/3');
+    await pub.stop();
   });
 });

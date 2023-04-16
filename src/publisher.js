@@ -196,6 +196,19 @@ class Publisher {
 
     await channel.publish(topic, headers, msg, options);
   }
+
+  async stop(closeConnection = true) {
+    debug('Stopping all channels');
+    const l = this.channels.length;
+    const promises = [];
+    for (let i = 0; i < l; i += 1) {
+      const channel = this.channels[i];
+      promises.push(channel.stop(closeConnection));
+    }
+
+    await Promise.all(promises);
+    debug('Channels stopped');
+  }
 }
 
 module.exports = { Publisher };

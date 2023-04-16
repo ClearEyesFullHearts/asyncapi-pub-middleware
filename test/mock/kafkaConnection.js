@@ -4,4 +4,5 @@ module.exports = {
     console.log('kafka send message');
     console.log(topic, messages);
   },
+  disconnect: () => Promise.resolve(),
 };

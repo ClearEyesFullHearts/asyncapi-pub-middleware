@@ -86,6 +86,19 @@ class Channel {
     await Promise.all(results);
     debug(`Channel published ${results.length} messages`);
   }
+
+  async stop(closeConnection) {
+    debug('Closing channel');
+    const l = this.publishers.length;
+    const results = [];
+    for (let i = 0; i < l; i += 1) {
+      const { publisher } = this.publishers[i];
+      results.push(publisher.stop(closeConnection));
+    }
+
+    await Promise.all(results);
+    debug('Channel closed');
+  }
 }
 
 module.exports = { Channel };

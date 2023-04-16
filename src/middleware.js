@@ -10,6 +10,9 @@ async function getPublisherMiddleware(doc, connections = {}, plugins = {}) {
       publish: async (topic, msg, headers, options) => {
         await publisher.publish(topic, msg, headers, options);
       },
+      stop: async (closeConnection = true) => {
+        await publisher.stop(closeConnection);
+      },
     };
     next();
   };

@@ -10,5 +10,7 @@ module.exports = {
       console.log('routingKey message');
       console.log(exc, topic, buffer.toString(), opts);
     },
+    close: () => Promise.resolve(),
   }),
+  close: () => Promise.resolve(),
 };
