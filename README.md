@@ -47,6 +47,7 @@ class Publisher {
   constructor(plugins = {})
   async loadAPI(apiDocument, options = {})
   async publish(topic, msg, headers = {}, options = {})
+  async stop(closeConnection = true)
 }
 ```
 The publisher class itself it available out of the middleware for your convenience
@@ -138,9 +139,15 @@ This function will pick the Channel defined by the topic, validate the parameter
 await publisher.publish('my.amqp.channel.name', { foo: 'bar' }, { 'x-session-id': 'myuuid' }, { priority: 25 });
 await publisher.publish('my.kafka.channel.name', { foo: 'bar' }, { 'x-session-id': 'myuuid' }, { key: 'myKafkaKey', partition: 3 });
 ```
+### `async stop(closeConnection = true)`
+This function will close all channels and the underlying connection if it's asked and applicable.
+```javascript
+await publisher.stop(false);
+```
   
 ## Plugins
 Plugins are used for the actual publishing of the message.  
+During the channels creation the result of `ProtocolConnection.getConnection(serverInfoFromSpec)` is fed to the ProtocolConnection constructor which is then bound, i.e. `protocol.bind(channelBindingsFromSpec, operationBindingsFromSpec)`.  
 Plugins prototype:
 ```javascript
 class ProtocolConnection {
@@ -148,5 +155,7 @@ class ProtocolConnection {
   constructor(conn);
   async bind(channelBindingsFromSpec, operationBindingsFromSpec);
   async publish(topic, headers, msg, messageBindingsFromSpec, options = {});
+  async publish(topic, headers, msg, messageBindingsFromSpec, options = {});
+  async stop(closeConnection = true)
 }
 ```
