@@ -155,7 +155,6 @@ class ProtocolConnection {
   constructor(conn);
   async bind(channelBindingsFromSpec, operationBindingsFromSpec);
   async publish(topic, headers, msg, messageBindingsFromSpec, options = {});
-  async publish(topic, headers, msg, messageBindingsFromSpec, options = {});
   async stop(closeConnection = true)
 }
 ```
