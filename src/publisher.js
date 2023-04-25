@@ -18,7 +18,11 @@ class Publisher {
     this.channels = [];
     this.plugins = {
       amqp: './plugins/amqp',
+      amqps: './plugins/amqp',
       kafka: './plugins/kafka',
+      'kafka-secure': './plugins/kafka',
+      http: './plugins/http',
+      https: './plugins/http',
       ...plugins,
     };
 
