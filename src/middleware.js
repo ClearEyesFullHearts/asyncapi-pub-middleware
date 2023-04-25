@@ -8,7 +8,8 @@ async function getPublisherMiddleware(doc, connections = {}, plugins = {}) {
     if (!req.api) req.api = {};
     req.api.publisher = {
       publish: async (topic, msg, headers, options) => {
-        await publisher.publish(topic, msg, headers, options);
+        const resultArray = await publisher.publish(topic, msg, headers, options)
+        return resultArray;
       },
       stop: async (closeConnection = true) => {
         await publisher.stop(closeConnection);
