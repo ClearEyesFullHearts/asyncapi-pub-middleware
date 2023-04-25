@@ -2,7 +2,7 @@
 Add a validating publisher object, from an AsyncAPI file description, to your request
 
 ## Summary
-This module will automatically adds a validating publisher object (RabbitMQ or Kafka) to the request of your express-like application, from an [AsyncAPI](https://www.asyncapi.com/docs/reference/specification/v2.6.0) definition file.
+This module will automatically adds a validating publisher object (RabbitMQ, Kafka or HTTP) to the request of your express-like application, from an [AsyncAPI](https://www.asyncapi.com/docs/reference/specification/v2.6.0) definition file.
 
 # Usage
 ```javascript
@@ -59,6 +59,7 @@ const publisher = new Publisher();
 For the moment only those protocol are taken care of
 - amqp, using [amqplib](https://www.npmjs.com/package/amqplib).
 - kafka, using [KafkaJS](https://kafka.js.org/docs/getting-started).  
+- http, using [Axios](https://www.npmjs.com/package/axios).
   
 You can add other protocols or overwrite existing ones by passing a path to a protocol plugin file into the Publisher constuctor:
 ```javascript
@@ -109,11 +110,15 @@ servers:
   kafkaBroker:
     url: localhost:19092
     protocol: kafka
+  RESTServer:
+    url: localhost:8080
+    protocol: http
 ```
 Your connection object should look like that:    
 ```javascript
 const { Kafka } = require('kafkajs');
 const amqplib = require('amqplib');
+const axios = require('axios');
 
 // Actual connection from amqplib for amqp protocol
 const rabbitConn = await amqplib.connect('amqp://myuser:mypassword@localhost:5672');
@@ -126,18 +131,27 @@ const kafka = new Kafka({
 const kafkaProducer = kafka.producer();
 await kafkaProducer.connect();
 
+// Axios instance for http protocol
+const httpInstance = axios.create({
+  baseURL: 'localhost:8080',
+  headers: { 'Authorization': AUTH_TOKEN },
+});
+
 const options = {
   connections: {
     rabbit: rabbitConn, // name of the amqp protocol server in the spec
     kafkaBroker: kafkaProducer, // name of the kafka protocol server in the spec
+    RESTServer: httpInstance, // name of the http protocol server in the spec
   },
 };
 ```
 ### `async publish(topic, msg, headers = {}, options = {})`
-This function will pick the Channel defined by the topic, validate the parameters, headers and message payload against the schema defined in the spec file and then ask the plugin to publish the message with the options.
+This function will pick the Channel defined by the topic, validate the parameters, headers and message payload against the schema defined in the spec file and then ask the plugin to publish the message with the options.  
+The `publish` function returns the result of the publish action if applicable (i.e. only for the http protocol), it will always be an array of results.  
 ```javascript
 await publisher.publish('my.amqp.channel.name', { foo: 'bar' }, { 'x-session-id': 'myuuid' }, { priority: 25 });
 await publisher.publish('my.kafka.channel.name', { foo: 'bar' }, { 'x-session-id': 'myuuid' }, { key: 'myKafkaKey', partition: 3 });
+const [{ data, status, headers }] = await publisher.publish('/ping', { foo: 'bar' }, { 'x-session-id': 'myuuid' });
 ```
 ### `async stop(closeConnection = true)`
 This function will close all channels and the underlying connection if it's asked and applicable.
