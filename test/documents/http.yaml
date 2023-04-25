@@ -1,0 +1,55 @@
+asyncapi: 2.6.0
+info:
+  title: MFT Async Services
+  version: 1.0.0
+  description: These services are in charge of managing the monitoring of the MFT services and long running processes
+servers:
+  config:
+    url: localhost:3001
+    protocol: http
+channels:
+  /load:
+    description: Triggers the reloading of the config files
+    servers:
+      - config
+    subscribe:
+      description: Order the reloading of the config files
+      operationId: loadConfig
+      tags:
+        - name: rest-api
+      message:
+        $ref: '#/components/messages/LoadConfig'
+      bindings:
+        $ref: '#/components/operationBindings/load'
+components:
+  operationBindings:
+    load:
+      http:
+        type: request
+        method: PUT
+  messages:
+    LoadConfig:
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        type: object
+        required:
+          - apps
+        properties:
+          apps:
+            type: array
+            items:
+              type: string
+              enum:
+                - "*"
+                - mail-worker
+                - log-manager
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        required:
+          - x-session-id
+        properties:
+          x-session-id:
+            type: string

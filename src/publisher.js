@@ -194,7 +194,7 @@ class Publisher {
 
     debug(`Publish on topic ${topic}`);
 
-    await channel.publish(topic, headers, msg, options);
+    return channel.publish(topic, headers, msg, options);
   }
 
   async stop(closeConnection = true) {

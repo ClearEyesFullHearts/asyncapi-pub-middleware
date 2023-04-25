@@ -66,4 +66,24 @@ describe('Publisher tests', () => {
     await pub.publish('events/3');
     await pub.stop();
   });
+
+  test('my test HTTP', async () => {
+    const pub = new Publisher({ http: '../test/mock/http' });
+    const text = fs.readFileSync(`${__dirname}/documents/http.yaml`, 'utf8');
+
+    await pub.loadAPI(text);
+
+    const body = {
+      apps: ['*'],
+    };
+
+    const result = await pub.publish('/load', body, { 'x-session-id': 'myuniqueid' });
+    const [{
+      data,
+      status,
+    }] = result;
+    expect(data.result).toBe('OK');
+    expect(status).toBe(200);
+    await pub.stop();
+  });
 });

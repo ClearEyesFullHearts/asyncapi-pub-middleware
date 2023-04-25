@@ -83,8 +83,9 @@ class Channel {
       results.push(publisher.publish(topic, header, message, messageBindings, options));
     }
 
-    await Promise.all(results);
+    const arr = await Promise.all(results);
     debug(`Channel published ${results.length} messages`);
+    return arr;
   }
 
   async stop(closeConnection) {
