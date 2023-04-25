@@ -57,9 +57,9 @@ const publisher = new Publisher();
 ```
 ### `constructor(plugins = {})`
 For the moment only those protocol are taken care of
-- amqp, using [amqplib](https://www.npmjs.com/package/amqplib).
-- kafka, using [KafkaJS](https://kafka.js.org/docs/getting-started).  
-- http, using [Axios](https://www.npmjs.com/package/axios).
+- amqp & amqps, using [amqplib](https://www.npmjs.com/package/amqplib).
+- kafka & kafka-secure, using [KafkaJS](https://kafka.js.org/docs/getting-started).  
+- http & https, using [Axios](https://www.npmjs.com/package/axios).
   
 You can add other protocols or overwrite existing ones by passing a path to a protocol plugin file into the Publisher constuctor:
 ```javascript
